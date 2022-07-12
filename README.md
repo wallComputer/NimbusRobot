@@ -48,8 +48,8 @@ For pinouts, refer to [PINOUTS.md](PINOUTS.md), for example, one can find pin co
 There is a separate github repository for the hardware files. Please refer to them for Kicad Schematics, PCB Layouts, project libraries, step files, and component lists.
 
 ## Software Examples:
-1. [Blink Blue LED](example1_BLUE_LED/README.md)
-2. [Fade NEOPIXEL](example2_NEOPIXEL/README.md)
+1. [Blink Blue LED](Example_001_LED/main.py)
+2. Fade NEOPIXEL
 3. OLED
 4. Basic Motor Control
 5. Motor Control with Encoder
