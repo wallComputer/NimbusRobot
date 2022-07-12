@@ -49,7 +49,7 @@ There is a separate github repository for the hardware files. Please refer to th
 
 ## Software Examples:
 1. [Blink Blue LED](Example_001_LED/.README.md)
-2. [NEOPIXEL]()
+2. [NEOPIXEL](Example_002_NEOPIXEL/.README.md)
 3. OLED
 4. Basic Motor Control
 5. Motor Control with Encoder
