@@ -2,23 +2,29 @@
 
 # Description
 This project is centered around the Raspberry Pi RP2040 based robot I designed in June of 2022. 
-Previously, I had made another small size wheeled robot, the PiZumo Robot. Unfortunately it has issues, and I thought making a simpler robot would be a way to find if I can eliminate these issues and make something more fun and easier to programme.
+Previously, I had made another small size wheeled robot, the PiZumo Robot. Unfortunately it has 
+issues, and I thought making a simpler robot would be a way to find if I can eliminate these issues 
+and make something more fun and easier to programme. This design also separates the Raspberry Pi
+from the main robot.
 
 <p align = "center">
-<img src = "images/PCB-View.png">
+<img src = "images/PCB.png">
+
+                                    PCB Designed in KiCad
 </p>
 <p align = "center">
-Kicad PCB View
+<img src = "images/BaseBot.png">
+ 
+                                            Base Robot
 </p>
 <p align = "center">
-<img src = "images/Fusion-360-View.png">
-</p>
-<p align = "center">
-Fusion 360 Design for chassis.
+<img src = "images/F360.png">
+
+                                Robot with Raspberry Pi and Camera
 </p>
 
 ## Features
-The robot has the following features:
+The main robot itself has the following features:
 
 - Powered from a 2000mAh 3.3V Lipo Battery.
 - PowerBooster to charge and Boost the Battery to 5.17V.
@@ -26,19 +32,21 @@ The robot has the following features:
 - Raspberry Pi RP2040 for main controller.
 - 16MB onboard FLASH.
 - Battery Charging from USB-C. 
-- Four DC Motor Control with 2-channel encoder input and ~280mA current limit on each motor. 
+- 2x Motor Controllers for controlling 4 DC motors.
+- Encoder Inputs for each motor.
+- Single Switch to control Motor Power.
 - Two 3 Pin Servo Headers.
 - Headers for I2C, UART, and SWD pins.
 - MPU-6050 for Accelerometer and Gyroscope.
 - LIS2MDL for Magnetometer.
-- BMP388 for Pressure/Altitude/Height above Ground measurement.
-- OLED Header
-- VL53L0X header for front distance sensing.
-- RGB Neopixel WS2812B
-- BLUE LED
-- User Button Combined with BOOT Button
-- Reset Button
-- LEDs for forward and Backward Control Indication.
+- OLED Header.
+- Forward facing Pimoroni I2C Breakout Garden Header.
+- RGB Neopixel WS2812B.
+- BLUE User LED.
+- User Button Combined with BOOT Button.
+- Reset Button.
+- LEDs for forward and Backward Control Indication per wheel.
+- Jumpers to control Current Limits on the motor, MPU-6050 Address, I2C Pull-Up Resisitors.
 - ADC demuxing for Current sensing on each Motor, Fault registering for each Motor Control, Voltage level measuring for Battery Input and PowerBooster output.
 
 ## Pinout
