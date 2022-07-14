@@ -50,7 +50,8 @@ The main robot itself has the following features:
 - ADC demuxing for Current sensing on each Motor, Fault registering for each Motor Control, Voltage level measuring for Battery Input and PowerBooster output.
 
 ## Pinout
-For pinouts, refer to [PINOUTS.md](PINOUTS.md), for example, one can find pin connections for Motors in [Motor Section](PINOUTS.md#motor-connections) section, and those for ADC in its own [section](PINOUTS.md#adc).
+For pinouts, refer to [PINOUTS.md](PINOUTS.md), for example, one can find pin connections for Motors in 
+[Motor Section](PINOUTS.md#motor-connections), and those for ADC in its own [ADC section](PINOUTS.md#adc).
 
 ## Hardware 
 There is a separate github repository for the hardware files. Please refer to them for Kicad Schematics, PCB Layouts, project libraries, step files, and component lists.
