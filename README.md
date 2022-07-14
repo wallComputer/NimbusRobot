@@ -40,7 +40,7 @@ The main robot itself has the following features:
 - MPU-6050 for Accelerometer and Gyroscope.
 - LIS2MDL for Magnetometer.
 - OLED Header.
-- Forward facing Pimoroni I2C Breakout Garden Header.
+- Forward facing Pimoroni I2C Breakout Garden Header. (Populated with [VL53L5CX](https://shop.pimoroni.com/products/vl53l5cx-time-of-flight-tof-sensor-breakout?variant=39972903059539) distance sensor).
 - RGB Neopixel WS2812B.
 - BLUE User LED.
 - User Button Combined with BOOT Button.
@@ -60,11 +60,10 @@ There is a separate github repository for the hardware files. Please refer to th
 1. [Blink Blue LED](Example_001_LED/.README.md)
 2. [NEOPIXEL](Example_002_NEOPIXEL/.README.md)
 3. OLED
-4. Basic Motor Control
+4. [Basic Motor Control](Example_004_MOTORS_BASIC/.README.md)
 5. Motor Control with Encoder
 6. MPU-6050 Code
 7. LIS2MDL Bearing
-8. BMP388 Pressure Sensor
-9. VL53L0X Distance Sensor
-10. ADC with 74LV4051D
-11. Servo Motor Control
+8. [VL53L5CX](https://shop.pimoroni.com/products/vl53l5cx-time-of-flight-tof-sensor-breakout?variant=39972903059539) Distance Sensor.
+9. ADC with 74LV4051D
+10. Servo Motor Control
