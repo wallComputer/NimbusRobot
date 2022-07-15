@@ -66,5 +66,5 @@ There is a separate github repository for the hardware files. Please refer to th
 7. MPU-6050 Code
 8. LIS2MDL Bearing
 9. [VL53L5CX](https://shop.pimoroni.com/products/vl53l5cx-time-of-flight-tof-sensor-breakout?variant=39972903059539) Distance Sensor.
-10. ADC with 74LV4051D
+10. [ADC with 74LV4051D](Example_009_ADC/.README.md)
 11. Servo Motor Control
