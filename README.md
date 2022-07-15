@@ -62,8 +62,9 @@ There is a separate github repository for the hardware files. Please refer to th
 3. OLED
 4. [Basic Motor Control](Example_004_MOTORS_BASIC/.README.md)
 5. Motor Control with Encoder
-6. MPU-6050 Code
-7. LIS2MDL Bearing
-8. [VL53L5CX](https://shop.pimoroni.com/products/vl53l5cx-time-of-flight-tof-sensor-breakout?variant=39972903059539) Distance Sensor.
-9. ADC with 74LV4051D
-10. Servo Motor Control
+6. UART
+7. MPU-6050 Code
+8. LIS2MDL Bearing
+9. [VL53L5CX](https://shop.pimoroni.com/products/vl53l5cx-time-of-flight-tof-sensor-breakout?variant=39972903059539) Distance Sensor.
+10. ADC with 74LV4051D
+11. Servo Motor Control
