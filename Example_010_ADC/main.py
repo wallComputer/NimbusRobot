@@ -1,10 +1,29 @@
 import time
 
-from machine import Pin
+from machine import Pin, I2C
 from nrpd import *
 from lib import adcWTMux, motors
+
+from ssd1306 import SSD1306_I2C
+from nrpd import *
+import framebuf
+
+i2c=I2C(0,sda=Pin(I2C_SDA), scl=Pin(I2C_SCL), freq=400000)
+oled = SSD1306_I2C(128, 64, i2c)
 mc = motors.motorControllers()
 adc = adcWTMux.adcWTMux()
+devices = i2c.scan()
+oled.text(str(devices),0,0)
+oled.show()
+time.sleep(5)
+
+
+while True:
+    oled.fill(0)
+    oled.text("BT: {BT: .2f}V".format(BT=adc.readBatteryLevel_V()), 0, 0)
+    oled.text("PB: {PB:.2f}V".format(PB=adc.readPowerBooster_V()), 0, 32)
+    oled.show()
+    time.sleep(0.5)
 # N = 4000
 # currentOffsets = [0,0,0,0]
 # for i in range(0,N):
