@@ -62,6 +62,10 @@ class nimbusI2CPeripheral:
 
     def __init__(self, callBackFunction):
         self.regs = Registers()
+        self.singeByteRegisters = [self.regs.NLED, self.regs.NMSC, self.regs.NBTN]
+        self.doubleByteRegisters = [self.regs.NBLV, self.regs.NBCV, self.regs.NPBV, self.regs.NMLTC, self.regs.NMLBC,
+                                    self.regs.NMRTC, self.regs.NMRBC]
+        self.tripleByteRegisters = [self.regs.NNPXL]
         self.dataFieldTx = bytearray([0] * self.regs.DC)
         self.dataFieldRx = bytearray([0] * self.regs.DC)
         data = analogToDataConverter(batteryCutoffVoltage, 100)
@@ -71,91 +75,65 @@ class nimbusI2CPeripheral:
         self.tim = Timer()
         self.tim.init(freq=50, mode=Timer.PERIODIC, callback=callBackFunction)
 
+    def write(self, register):
+        count = 0
+        if register in self.singeByteRegisters:
+            count = 1
+        elif register in self.doubleByteRegisters:
+            count = 2
+        elif register in self.tripleByteRegisters:
+            count = 3
+        for i in range(0, count):
+            self.p_i2c.put(self.dataFieldTx[register - self.regs.OFFSET + i])
+
+    def read(self, register):
+        count = 0
+        if register in self.singeByteRegisters:
+            count = 1
+        elif register in self.doubleByteRegisters:
+            count = 2
+        elif register in self.tripleByteRegisters:
+            count = 3
+        if count is 1:
+            self.dataFieldRx[register - self.regs.OFFSET] = self.p_i2c.get()
+        else:
+            size = self.p_i2c.get()  # should be equal to count.
+            for i in range(0, count):
+                self.dataFieldRx[register - self.regs.OFFSET + i] = self.p_i2c.get()
+        for i in range(0, count):
+            self.dataFieldTx[register - self.regs.OFFSET + i] = self.dataFieldRx[register - self.regs.OFFSET + i]
+
 
 def callBackFunc(tim):
     global i2cHandler, batteryCutoffVoltage
     rxS = i2cHandler.p_i2c.rxFifoSize()
     wI = i2cHandler.p_i2c.anyRead()
     rI = i2cHandler.p_i2c.any()
-    # print(rxS, wI, rI)
-    if rxS is not 0:
-        print("Size: {}".format(rxS))
-    elif rxS is 0 and wI and not rI:
-        i2cHandler.p_i2c.put(0x45)  # For general call release
+    if rxS is 0 and wI and not rI:
+        i2cHandler.p_i2c.put(0x00)  # For general call release
     if rI:
         readAv = True
         reg = i2cHandler.p_i2c.get()
-        print("Reg: {}".format(reg))
         if reg == i2cHandler.regs.NR:
             reg = i2cHandler.p_i2c.get()  # Read the incoming byte from controller so controller doesn't stay waiting.
             machine.reset()
         if wI:
-            if reg is i2cHandler.regs.NBLV:
-                # Send Upper Byte first.
-                i2cHandler.p_i2c.put(i2cHandler.dataFieldTx[i2cHandler.regs.NBLV - i2cHandler.regs.OFFSET])
-                # Send Lower Byte next.
-                i2cHandler.p_i2c.put(i2cHandler.dataFieldTx[i2cHandler.regs.NBLV - i2cHandler.regs.OFFSET + 1])
-            elif reg is i2cHandler.regs.NNPXL:
-                i2cHandler.p_i2c.put(i2cHandler.dataFieldTx[i2cHandler.regs.NNPXL - i2cHandler.regs.OFFSET])
-                i2cHandler.p_i2c.put(i2cHandler.dataFieldTx[i2cHandler.regs.NNPXL - i2cHandler.regs.OFFSET + 1])
-                i2cHandler.p_i2c.put(i2cHandler.dataFieldTx[i2cHandler.regs.NNPXL - i2cHandler.regs.OFFSET + 2])
-            elif reg is i2cHandler.regs.NBCV:
-                i2cHandler.p_i2c.put(i2cHandler.dataFieldTx[i2cHandler.regs.NBCV - i2cHandler.regs.OFFSET])
-                i2cHandler.p_i2c.put(i2cHandler.dataFieldTx[i2cHandler.regs.NBCV - i2cHandler.regs.OFFSET + 1])
-            elif reg is i2cHandler.regs.NPBV:
-                i2cHandler.p_i2c.put(i2cHandler.dataFieldTx[i2cHandler.regs.NPBV - i2cHandler.regs.OFFSET])
-                i2cHandler.p_i2c.put(i2cHandler.dataFieldTx[i2cHandler.regs.NPBV - i2cHandler.regs.OFFSET + 1])
-            elif reg is i2cHandler.regs.NLED:
-                i2cHandler.p_i2c.put(i2cHandler.dataFieldTx[i2cHandler.regs.NLED - i2cHandler.regs.OFFSET])
-            elif reg is i2cHandler.regs.NMSC:
-                i2cHandler.p_i2c.put(i2cHandler.dataFieldTx[i2cHandler.regs.NMSC - i2cHandler.regs.OFFSET])
-            elif reg is i2cHandler.regs.NMLTC:
-                i2cHandler.p_i2c.put(i2cHandler.dataFieldTx[i2cHandler.regs.NMLTC - i2cHandler.regs.OFFSET])
-                i2cHandler.p_i2c.put(i2cHandler.dataFieldTx[i2cHandler.regs.NMLTC - i2cHandler.regs.OFFSET + 1])
-            elif reg is i2cHandler.regs.NMLBC:
-                i2cHandler.p_i2c.put(i2cHandler.dataFieldTx[i2cHandler.regs.NMLBC - i2cHandler.regs.OFFSET])
-                i2cHandler.p_i2c.put(i2cHandler.dataFieldTx[i2cHandler.regs.NMLBC - i2cHandler.regs.OFFSET + 1])
-            elif reg is i2cHandler.regs.NMRTC:
-                i2cHandler.p_i2c.put(i2cHandler.dataFieldTx[i2cHandler.regs.NMRTC - i2cHandler.regs.OFFSET])
-                i2cHandler.p_i2c.put(i2cHandler.dataFieldTx[i2cHandler.regs.NMRTC - i2cHandler.regs.OFFSET + 1])
-            elif reg is i2cHandler.regs.NMRBC:
-                i2cHandler.p_i2c.put(i2cHandler.dataFieldTx[i2cHandler.regs.NMRBC - i2cHandler.regs.OFFSET])
-                i2cHandler.p_i2c.put(i2cHandler.dataFieldTx[i2cHandler.regs.NMRBC - i2cHandler.regs.OFFSET + 1])
-            elif reg is i2cHandler.regs.NBTN:
-                i2cHandler.p_i2c.put(i2cHandler.dataFieldTx[i2cHandler.regs.NBTN - i2cHandler.regs.OFFSET])
-
+            i2cHandler.write(reg)
         else:
+            i2cHandler.read(reg)
             if reg is i2cHandler.regs.NLED:
-                i2cHandler.dataFieldRx[i2cHandler.regs.NLED - i2cHandler.regs.OFFSET] = i2cHandler.p_i2c.get()
                 led_onboard.value(i2cHandler.dataFieldRx[i2cHandler.regs.NLED - i2cHandler.regs.OFFSET])
-                i2cHandler.dataFieldTx[i2cHandler.regs.NLED - i2cHandler.regs.OFFSET] = i2cHandler.dataFieldRx[
-                    i2cHandler.regs.NLED - i2cHandler.regs.OFFSET]
             elif reg is i2cHandler.regs.NMSC:
-                i2cHandler.dataFieldRx[i2cHandler.regs.NMSC - i2cHandler.regs.OFFSET] = i2cHandler.p_i2c.get()
                 motorSwitchControl.value(i2cHandler.dataFieldRx[i2cHandler.regs.NMSC - i2cHandler.regs.OFFSET])
-                i2cHandler.dataFieldTx[i2cHandler.regs.NMSC - i2cHandler.regs.OFFSET] = i2cHandler.dataFieldRx[
-                    i2cHandler.regs.NMSC - i2cHandler.regs.OFFSET]
             elif reg is i2cHandler.regs.NNPXL:
-                size = i2cHandler.p_i2c.get()  # Should be 3
-                i2cHandler.dataFieldRx[i2cHandler.regs.NNPXL - i2cHandler.regs.OFFSET] = i2cHandler.p_i2c.get()
-                i2cHandler.dataFieldRx[i2cHandler.regs.NNPXL - i2cHandler.regs.OFFSET + 1] = i2cHandler.p_i2c.get()
-                i2cHandler.dataFieldRx[i2cHandler.regs.NNPXL - i2cHandler.regs.OFFSET + 2] = i2cHandler.p_i2c.get()
                 nnpxlPos = i2cHandler.regs.NNPXL - i2cHandler.regs.OFFSET
-                i2cHandler.dataFieldTx[nnpxlPos:nnpxlPos + 2 + 1] = i2cHandler.dataFieldRx[nnpxlPos:nnpxlPos + 2 + 1]
-                ws2812b.pixels_set(0, (i2cHandler.dataFieldTx[nnpxlPos], i2cHandler.dataFieldTx[nnpxlPos + 1],
-                                       i2cHandler.dataFieldTx[nnpxlPos + 2]))
+                ws2812b.pixels_set(0, (i2cHandler.dataFieldRx[nnpxlPos], i2cHandler.dataFieldRx[nnpxlPos + 1],
+                                       i2cHandler.dataFieldRx[nnpxlPos + 2]))
                 ws2812b.pixels_show()
             elif reg is i2cHandler.regs.NBCV:
-                size = i2cHandler.p_i2c.get()  # Should be 2
-                i2cHandler.dataFieldRx[i2cHandler.regs.NBCV - i2cHandler.regs.OFFSET] = i2cHandler.p_i2c.get()
-                i2cHandler.dataFieldRx[i2cHandler.regs.NBCV - i2cHandler.regs.OFFSET + 1] = i2cHandler.p_i2c.get()
                 batteryCutoffVoltage = dataToAnalogConverter(i2cHandler.dataFieldRx[
                                                              i2cHandler.regs.NBCV - i2cHandler.regs.OFFSET:i2cHandler.regs.NBCV - i2cHandler.regs.OFFSET + 2],
                                                              100)
-                i2cHandler.dataFieldTx[i2cHandler.regs.NBCV - i2cHandler.regs.OFFSET] = i2cHandler.dataFieldRx[
-                    i2cHandler.regs.NBCV - i2cHandler.regs.OFFSET]
-                i2cHandler.dataFieldTx[i2cHandler.regs.NBCV - i2cHandler.regs.OFFSET + 1] = i2cHandler.dataFieldRx[
-                    i2cHandler.regs.NBCV - i2cHandler.regs.OFFSET + 1]
 
 
 i2cHandler = nimbusI2CPeripheral(callBackFunction=callBackFunc)
