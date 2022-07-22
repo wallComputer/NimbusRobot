@@ -30,7 +30,7 @@ sm = rp2.StateMachine(0, ws2812, freq=8_000_000, sideset_base=Pin(PIN_NUM))
 # Start the StateMachine, it will wait for data on its FIFO.
 sm.active(1)
 
-# Display i2cHandler pattern on the LEDs via an array of LED RGB values.
+# Display a pattern on the LEDs via an array of LED RGB values.
 ar = array.array("I", [0 for _ in range(NUM_LEDS)])
 
 
@@ -63,8 +63,8 @@ def color_chase(color, wait):
 
 
 def wheel(pos):
-    # Input i2cHandler value 0 to 255 to get i2cHandler color value.
-    # The colours are i2cHandler transition r - g - b - back to r.
+    # Input a value 0 to 255 to get a color value.
+    # The colours are a transition r - g - b - back to r.
     if pos < 0 or pos > 255:
         return [0, 0, 0]
     if pos < 85:
