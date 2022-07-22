@@ -15,8 +15,10 @@ button = machine.Pin(BUTTON_PIN, machine.Pin.IN)
 adc = adcWTMux.adcWTMux()
 batteryCutoffVoltage = 3.8
 
+
 def dataToAnalogConverter(data, scale):
     return (data[0] << 8 | data[1]) / scale
+
 
 def analogToDataConverter(analogValue, scale):
     data = [0, 0]
@@ -24,6 +26,7 @@ def analogToDataConverter(analogValue, scale):
     data[0] = (analogValue & 0xFF00) >> 8
     data[1] = analogValue & 0x00FF
     return data
+
 
 def callBackFunc(tim):
     global i2cPeripheralHandler, batteryCutoffVoltage
@@ -60,7 +63,8 @@ def callBackFunc(tim):
 
 
 i2cPeripheralHandler = nimbusI2CPeripheral(callBackFunction=callBackFunc,
-                                           initialBatteryCutoff=analogToDataConverter(batteryCutoffVoltage, 100))
+                                           initialBatteryCutoff=analogToDataConverter(batteryCutoffVoltage, 100),
+                                           i2cAddress=0x45)
 
 
 def looper():

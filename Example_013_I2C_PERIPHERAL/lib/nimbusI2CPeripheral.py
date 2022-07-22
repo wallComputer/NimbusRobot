@@ -33,7 +33,7 @@ class _Registers:
 
 class nimbusI2CPeripheral:
 
-    def __init__(self, callBackFunction, initialBatteryCutoff):
+    def __init__(self, callBackFunction, initialBatteryCutoff, frequency=50, i2cAddress=0x55):
         self.regs = _Registers()
         self.singeByteRegisters = [self.regs.NLED, self.regs.NMSC, self.regs.NBTN]
         self.doubleByteRegisters = [self.regs.NBLV, self.regs.NBCV, self.regs.NPBV,
@@ -44,9 +44,9 @@ class nimbusI2CPeripheral:
         self.dataFieldRx = bytearray([0] * self.regs.DC)
         self.dataFieldTx[self.regs.NBCV - self.regs.OFFSET] = initialBatteryCutoff[0]
         self.dataFieldTx[self.regs.NBCV - self.regs.OFFSET + 1] = initialBatteryCutoff[1]
-        self.p_i2c = i2cPeripheral.i2cPeripheral(i2cID=0, sda=I2C_SDA, scl=I2C_SCL, peripheralAddress=0x55)
+        self.p_i2c = i2cPeripheral.i2cPeripheral(i2cID=0, sda=I2C_SDA, scl=I2C_SCL, peripheralAddress=i2cAddress)
         self.tim = Timer()
-        self.tim.init(freq=50, mode=Timer.PERIODIC, callback=callBackFunction)
+        self.tim.init(freq=frequency, mode=Timer.PERIODIC, callback=callBackFunction)
 
     def write(self, register):
         count = 0
