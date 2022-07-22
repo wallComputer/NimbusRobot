@@ -3,7 +3,7 @@ import i2cPeripheral
 from machine import Timer
 from nrpd import *
 
-class Registers:
+class _Registers:
     OFFSET = 1
     NR = 0x01
     NBLV = 0x02
@@ -34,7 +34,7 @@ class Registers:
 class nimbusI2CPeripheral:
 
     def __init__(self, callBackFunction, initialBatteryCutoff):
-        self.regs = Registers()
+        self.regs = _Registers()
         self.singeByteRegisters = [self.regs.NLED, self.regs.NMSC, self.regs.NBTN]
         self.doubleByteRegisters = [self.regs.NBLV, self.regs.NBCV, self.regs.NPBV,
                                     self.regs.NMLTC, self.regs.NMLBC,
