@@ -66,7 +66,8 @@ class _Registers:
 
 class nimbusI2CPeripheral:
 
-    def __init__(self, callBackFunction, initialBatteryCutoff, frequency=50, i2cAddress=0x55):
+    def __init__(self, callBackFunction, initialBatteryCutoff, initialRobotTwistTime=1500,
+                 frequency=50, i2cAddress=0x55):
         self.regs = _Registers()
         self.singeByteRegisters = [self.regs.NLED, self.regs.NMSC,  # RW 1 Byte
                                    self.regs.NBTN, self.regs.NRTSP]
@@ -86,7 +87,10 @@ class nimbusI2CPeripheral:
                                 self.regs.NMLTTR, self.regs.NMLBTR, self.regs.NMRTTR, self.regs.NMRBTR]  # Store bytes.
         self.dataFieldTx = bytearray([0] * self.regs.DC)
         self.dataFieldRx = bytearray([0] * self.regs.DC)
-        self.dataFieldTx[self.regs.NBCV:self.regs.NBCV + 2] = bytearray(continuousToList2Converter(initialBatteryCutoff, 100))
+        self.dataFieldTx[self.regs.NBCV:self.regs.NBCV + 2] = \
+            bytearray(continuousToList2Converter(initialBatteryCutoff, 100))
+        self.dataFieldTx[self.regs.NRTTMS:self.regs.NRTTMS + 2] = \
+            bytearray(continuousToList2Converter(initialRobotTwistTime, 1))
         self.p_i2c = i2cPeripheral.i2cPeripheral(i2cID=0, sda=I2C_SDA, scl=I2C_SCL, peripheralAddress=i2cAddress)
         self.tim = Timer()
         self.tim.init(freq=frequency, mode=Timer.PERIODIC, callback=callBackFunction)

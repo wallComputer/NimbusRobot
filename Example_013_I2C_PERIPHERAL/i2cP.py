@@ -17,10 +17,10 @@ batteryCutoffVoltage = 3.8
 motorSpeeds = [0, 0, 0, 0]
 robotTwistSpeed = 0
 robotTwistAngle = 0
-
+robotTwistTime = 1500
 
 def callBackFunc(tim):
-    global i2cPeripheralHandler, batteryCutoffVoltage, motorSpeeds, robotTwistSpeed, robotTwistAngle
+    global i2cPeripheralHandler, batteryCutoffVoltage, motorSpeeds, robotTwistSpeed, robotTwistAngle, robotTwistTime
     rxS = i2cPeripheralHandler.p_i2c.rxFifoSize()
     wI = i2cPeripheralHandler.p_i2c.anyRead()
     rI = i2cPeripheralHandler.p_i2c.any()
@@ -59,11 +59,15 @@ def callBackFunc(tim):
             elif reg is i2cPeripheralHandler.regs.NRTAD:
                 robotTwistAngle = negativeTester(int(
                     list2ToContinuousConverter(i2cPeripheralHandler.dataFieldRx[reg:reg + 2], 1)), 2)
+            elif reg is i2cPeripheralHandler.regs.NRTTMS:
+                robotTwistTime = int(list2ToContinuousConverter(i2cPeripheralHandler.dataFieldRx[reg:reg + 2],1))
+                print(robotTwistTime)
 
 
 i2cPeripheralHandler = nimbusI2CPeripheral(callBackFunction=callBackFunc,
                                            initialBatteryCutoff=batteryCutoffVoltage,
                                            frequency=100,
+                                           initialRobotTwistTime=robotTwistTime,
                                            i2cAddress=0x45)
 
 
