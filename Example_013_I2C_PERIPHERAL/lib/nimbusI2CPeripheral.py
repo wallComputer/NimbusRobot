@@ -1,7 +1,7 @@
-
 import i2cPeripheral
 from machine import Timer
 from nrpd import *
+
 
 class _Registers:
     OFFSET = 1
@@ -16,30 +16,39 @@ class _Registers:
     NNPXL = 0x10
     NLED = 0x13
     NMSC = 0x14
-    NMLTS = 0x15
-    NMLBS = 0x16
-    NMRTS = 0x17
-    NMRBS = 0x18
-    NMLTT = 0x19
-    NMLBT = 0x1B
-    NMRTT = 0x1D
-    NMRBT = 0x1F
-    NMTSP = 0x21
-    NMTAR = 0x22
-    NMTTS = 0x24
-    NBTN = 0x25
-    DC = 37
+    NMAS = 0x15
+    NMLTTS = 0x19
+    NMLBTS = 0x1D
+    NMRTTS = 0x21
+    NMRBTS = 0x25
+    NMLTTR = 0x29
+    NMLBTR = 0x2D
+    NMRTTR = 0x31
+    NMRBTR = 0x35
+    NRTSP = 0x39
+    NRTAD = 0x3A
+    NRTTS = 0x3C
+    NBTN = 0x3D
+    DC = 61
 
 
 class nimbusI2CPeripheral:
 
     def __init__(self, callBackFunction, initialBatteryCutoff, frequency=50, i2cAddress=0x55):
         self.regs = _Registers()
-        self.singeByteRegisters = [self.regs.NLED, self.regs.NMSC, self.regs.NBTN]
-        self.doubleByteRegisters = [self.regs.NBLV, self.regs.NBCV, self.regs.NPBV,
-                                    self.regs.NMLTC, self.regs.NMLBC,
-                                    self.regs.NMRTC, self.regs.NMRBC]
-        self.tripleByteRegisters = [self.regs.NNPXL]
+        self.singeByteRegisters = [self.regs.NLED, self.regs.NMSC, # RW 1 Byte
+                                   self.regs.NBTN, self.regs.NRTSP, self.regs.NRTTS]
+        self.doubleByteRegisters = [self.regs.NBLV, self.regs.NBCV, self.regs.NPBV, self.regs.NMLTC,
+                                    self.regs.NMLBC, self.regs.NMRTC, self.regs.NMRBC, self.regs.NRTAD]  # RW 2 Bytes
+        self.tripleByteRegisters = [self.regs.NNPXL]  # RW 3 Bytes
+        self.quadByteRegisters = [self.regs.NMAS,  # RW 4 Bytes
+                                  self.regs.NMLTTS, self.regs.NMLBTS, self.regs.NMRTTS, self.regs.NMRBTS,
+                                  self.regs.NMLTTR, self.regs.NMLBTR, self.regs.NMRTTR, self.regs.NMRBTR]
+
+        # check sign before assigning to motor controller for NMXXTS data
+        # Store Packed Bytes correctly in NMXXTR locations.
+        self.encoderRegister = [self.regs.NMLTTS, self.regs.NMLBTS, self.regs.NMRTTS, self.regs.NMRBTS,
+                                self.regs.NMLTTR, self.regs.NMLBTR, self.regs.NMRTTR, self.regs.NMRBTR] # Store bytes.
         self.dataFieldTx = bytearray([0] * self.regs.DC)
         self.dataFieldRx = bytearray([0] * self.regs.DC)
         self.dataFieldTx[self.regs.NBCV - self.regs.OFFSET] = initialBatteryCutoff[0]
@@ -56,6 +65,8 @@ class nimbusI2CPeripheral:
             count = 2
         elif register in self.tripleByteRegisters:
             count = 3
+        elif register in self.quadByteRegisters:
+            count = 4
         for i in range(0, count):
             self.p_i2c.put(self.dataFieldTx[register - self.regs.OFFSET + i])
 
@@ -67,6 +78,8 @@ class nimbusI2CPeripheral:
             count = 2
         elif register in self.tripleByteRegisters:
             count = 3
+        elif register in self.quadByteRegisters:
+            count = 4
         if count is 1:
             self.dataFieldRx[register - self.regs.OFFSET] = self.p_i2c.get()
         else:
