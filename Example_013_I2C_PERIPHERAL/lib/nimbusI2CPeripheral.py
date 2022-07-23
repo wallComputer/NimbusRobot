@@ -37,32 +37,31 @@ def continuousTolist4Converter(encoderValue):
 
 
 class _Registers:
-    OFFSET = 1
-    NR = 0x01
-    NBLV = 0x02
-    NPBV = 0x04
-    NBCV = 0x06
-    NMLTC = 0x08
-    NMLBC = 0x0A
-    NMRTC = 0x0C
-    NMRBC = 0x0E
-    NNPXL = 0x10
-    NLED = 0x13
-    NMSC = 0x14
-    NMAS = 0x15
-    NMLTTS = 0x19
-    NMLBTS = 0x1D
-    NMRTTS = 0x21
-    NMRBTS = 0x25
-    NMLTTR = 0x29
-    NMLBTR = 0x2D
-    NMRTTR = 0x31
-    NMRBTR = 0x35
-    NRTSP = 0x39
-    NRTAD = 0x3A
-    NRTTS = 0x3C
+    NR = 0x00
+    NBLV = 0x01
+    NPBV = 0x03
+    NBCV = 0x05
+    NMLTC = 0x07
+    NMLBC = 0x09
+    NMRTC = 0x0B
+    NMRBC = 0x0D
+    NNPXL = 0x0F
+    NLED = 0x12
+    NMSC = 0x13
+    NMAS = 0x14
+    NMLTTS = 0x18
+    NMLBTS = 0x1C
+    NMRTTS = 0x20
+    NMRBTS = 0x24
+    NMLTTR = 0x28
+    NMLBTR = 0x2C
+    NMRTTR = 0x30
+    NMRBTR = 0x34
+    NRTSP = 0x38
+    NRTAD = 0x39
+    NRTTMS = 0x3B
     NBTN = 0x3D
-    DC = 61
+    DC = 62
 
 
 class nimbusI2CPeripheral:
@@ -70,13 +69,16 @@ class nimbusI2CPeripheral:
     def __init__(self, callBackFunction, initialBatteryCutoff, frequency=50, i2cAddress=0x55):
         self.regs = _Registers()
         self.singeByteRegisters = [self.regs.NLED, self.regs.NMSC,  # RW 1 Byte
-                                   self.regs.NBTN, self.regs.NRTSP, self.regs.NRTTS]
-        self.doubleByteRegisters = [self.regs.NBLV, self.regs.NBCV, self.regs.NPBV, self.regs.NMLTC,
-                                    self.regs.NMLBC, self.regs.NMRTC, self.regs.NMRBC, self.regs.NRTAD]  # RW 2 Bytes
+                                   self.regs.NBTN, self.regs.NRTSP]
+        self.doubleByteRegisters = [self.regs.NBLV, self.regs.NBCV,
+                                    self.regs.NPBV, self.regs.NMLTC,
+                                    self.regs.NMLBC, self.regs.NMRTC,
+                                    self.regs.NMRBC, self.regs.NRTAD, self.regs.NRTTMS]  # RW 2 Bytes
         self.tripleByteRegisters = [self.regs.NNPXL]  # RW 3 Bytes
-        self.quadByteRegisters = [self.regs.NMAS,  # RW 4 Bytes
-                                  self.regs.NMLTTS, self.regs.NMLBTS, self.regs.NMRTTS, self.regs.NMRBTS,
-                                  self.regs.NMLTTR, self.regs.NMLBTR, self.regs.NMRTTR, self.regs.NMRBTR]
+        self.quadByteRegisters = [self.regs.NMAS, self.regs.NMLTTS,
+                                  self.regs.NMLBTS, self.regs.NMRTTS,
+                                  self.regs.NMRBTS, self.regs.NMLTTR,
+                                  self.regs.NMLBTR, self.regs.NMRTTR, self.regs.NMRBTR]  # RW 4 Bytes
 
         # check sign before assigning to motor controller for NMXXTS data
         # Store Packed Bytes correctly in NMXXTR locations.
@@ -84,8 +86,7 @@ class nimbusI2CPeripheral:
                                 self.regs.NMLTTR, self.regs.NMLBTR, self.regs.NMRTTR, self.regs.NMRBTR]  # Store bytes.
         self.dataFieldTx = bytearray([0] * self.regs.DC)
         self.dataFieldRx = bytearray([0] * self.regs.DC)
-        self.dataFieldTx[self.regs.NBCV - self.regs.OFFSET] = initialBatteryCutoff[0]
-        self.dataFieldTx[self.regs.NBCV - self.regs.OFFSET + 1] = initialBatteryCutoff[1]
+        self.dataFieldTx[self.regs.NBCV:self.regs.NBCV + 2] = bytearray(continuousToList2Converter(initialBatteryCutoff, 100))
         self.p_i2c = i2cPeripheral.i2cPeripheral(i2cID=0, sda=I2C_SDA, scl=I2C_SCL, peripheralAddress=i2cAddress)
         self.tim = Timer()
         self.tim.init(freq=frequency, mode=Timer.PERIODIC, callback=callBackFunction)
@@ -100,8 +101,9 @@ class nimbusI2CPeripheral:
             count = 3
         elif register in self.quadByteRegisters:
             count = 4
+        print("WF: {0}, C: {1}".format(hex(register), count))
         for i in range(0, count):
-            self.p_i2c.put(self.dataFieldTx[register - self.regs.OFFSET + i])
+            self.p_i2c.put(self.dataFieldTx[register + i])
 
     def read(self, register):
         count = 0
@@ -113,11 +115,13 @@ class nimbusI2CPeripheral:
             count = 3
         elif register in self.quadByteRegisters:
             count = 4
+
+        print("RF: {0}, C: {1}".format(hex(register), count))
         if count is 1:
-            self.dataFieldRx[register - self.regs.OFFSET] = self.p_i2c.get()
+            self.dataFieldRx[register] = self.p_i2c.get()
         else:
             size = self.p_i2c.get()  # should be equal to count.
             for i in range(0, count):
-                self.dataFieldRx[register - self.regs.OFFSET + i] = self.p_i2c.get()
+                self.dataFieldRx[register + i] = self.p_i2c.get()
         for i in range(0, count):
-            self.dataFieldTx[register - self.regs.OFFSET + i] = self.dataFieldRx[register - self.regs.OFFSET + i]
+            self.dataFieldTx[register + i] = self.dataFieldRx[register + i]

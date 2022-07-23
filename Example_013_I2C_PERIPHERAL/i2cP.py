@@ -38,38 +38,38 @@ def callBackFunc(tim):
             i2cPeripheralHandler.read(reg)
             if reg is i2cPeripheralHandler.regs.NLED:
                 led_onboard.value(
-                    i2cPeripheralHandler.dataFieldRx[i2cPeripheralHandler.regs.NLED - i2cPeripheralHandler.regs.OFFSET])
+                    i2cPeripheralHandler.dataFieldRx[i2cPeripheralHandler.regs.NLED])
             elif reg is i2cPeripheralHandler.regs.NMSC:
                 motorSwitchControl.value(
-                    i2cPeripheralHandler.dataFieldRx[i2cPeripheralHandler.regs.NMSC - i2cPeripheralHandler.regs.OFFSET])
+                    i2cPeripheralHandler.dataFieldRx[i2cPeripheralHandler.regs.NMSC])
             elif reg is i2cPeripheralHandler.regs.NNPXL:
-                npxPos = i2cPeripheralHandler.regs.NNPXL - i2cPeripheralHandler.regs.OFFSET
+                npxPos = i2cPeripheralHandler.regs.NNPXL
                 ws2812b.pixels_set(0, (
                     i2cPeripheralHandler.dataFieldRx[npxPos], i2cPeripheralHandler.dataFieldRx[npxPos + 1],
                     i2cPeripheralHandler.dataFieldRx[npxPos + 2]))
                 ws2812b.pixels_show()
             elif reg is i2cPeripheralHandler.regs.NBCV:
-                bcvPos = i2cPeripheralHandler.regs.NBCV - i2cPeripheralHandler.regs.OFFSET
+                bcvPos = i2cPeripheralHandler.regs.NBCV
                 batteryCutoffVoltage = list2ToContinuousConverter(i2cPeripheralHandler.dataFieldRx[bcvPos:bcvPos + 2],
                                                                   100)
             elif reg is i2cPeripheralHandler.regs.NMAS:
-                mltPos = reg - i2cPeripheralHandler.regs.OFFSET
+                mltPos = reg
                 motorSpeeds[0] = negativeTester(i2cPeripheralHandler.dataFieldRx[mltPos], 1)
                 motorSpeeds[1] = negativeTester(i2cPeripheralHandler.dataFieldRx[mltPos + 1], 1)
                 motorSpeeds[2] = negativeTester(i2cPeripheralHandler.dataFieldRx[mltPos + 2], 1)
                 motorSpeeds[3] = negativeTester(i2cPeripheralHandler.dataFieldRx[mltPos + 3], 1)
             elif reg is i2cPeripheralHandler.regs.NRTSP:
-                tspPos = reg - i2cPeripheralHandler.regs.OFFSET
+                tspPos = reg
                 robotTwistSpeed = i2cPeripheralHandler.dataFieldRx[tspPos]
             elif reg is i2cPeripheralHandler.regs.NRTAD:
-                tarPos = reg - i2cPeripheralHandler.regs.OFFSET
+                tarPos = reg
                 robotTwistAngle = negativeTester(int(
                     list2ToContinuousConverter(i2cPeripheralHandler.dataFieldRx[tarPos:tarPos + 2], 1)), 2)
-                print(robotTwistAngle)
 
 
 i2cPeripheralHandler = nimbusI2CPeripheral(callBackFunction=callBackFunc,
-                                           initialBatteryCutoff=continuousToList2Converter(batteryCutoffVoltage, 100),
+                                           initialBatteryCutoff=batteryCutoffVoltage,
+                                           frequency=100,
                                            i2cAddress=0x45)
 
 
@@ -84,36 +84,36 @@ def looper():
         mrbC = adc.readMotorRightBottomCurrent_mA()
 
         dataB = continuousToList2Converter(battLevel, 100)
-        blPos = i2cPeripheralHandler.regs.NBLV - i2cPeripheralHandler.regs.OFFSET
+        blPos = i2cPeripheralHandler.regs.NBLV
         i2cPeripheralHandler.dataFieldTx[blPos] = dataB[0]
         i2cPeripheralHandler.dataFieldTx[blPos + 1] = dataB[1]
 
         dataP = continuousToList2Converter(boostLevel, 100)
-        boostLPos = i2cPeripheralHandler.regs.NPBV - i2cPeripheralHandler.regs.OFFSET
+        boostLPos = i2cPeripheralHandler.regs.NPBV
         i2cPeripheralHandler.dataFieldTx[boostLPos] = dataP[0]
         i2cPeripheralHandler.dataFieldTx[boostLPos + 1] = dataP[1]
 
         datamlt = continuousToList2Converter(mltC, 1)
-        mltPos = i2cPeripheralHandler.regs.NMLTC - i2cPeripheralHandler.regs.OFFSET
+        mltPos = i2cPeripheralHandler.regs.NMLTC
         i2cPeripheralHandler.dataFieldTx[mltPos] = datamlt[0]
         i2cPeripheralHandler.dataFieldTx[mltPos + 1] = datamlt[1]
 
         datamlb = continuousToList2Converter(mlbC, 1)
-        mlbPos = i2cPeripheralHandler.regs.NMLBC - i2cPeripheralHandler.regs.OFFSET
+        mlbPos = i2cPeripheralHandler.regs.NMLBC
         i2cPeripheralHandler.dataFieldTx[mlbPos] = datamlb[0]
         i2cPeripheralHandler.dataFieldTx[mlbPos + 1] = datamlb[1]
 
         datamrt = continuousToList2Converter(mrtC, 1)
-        mrtPos = i2cPeripheralHandler.regs.NMRTC - i2cPeripheralHandler.regs.OFFSET
+        mrtPos = i2cPeripheralHandler.regs.NMRTC
         i2cPeripheralHandler.dataFieldTx[mrtPos] = datamrt[0]
         i2cPeripheralHandler.dataFieldTx[mrtPos + 1] = datamrt[1]
 
         datamrb = continuousToList2Converter(mrbC, 1)
-        mrbPos = i2cPeripheralHandler.regs.NMRBC - i2cPeripheralHandler.regs.OFFSET
+        mrbPos = i2cPeripheralHandler.regs.NMRBC
         i2cPeripheralHandler.dataFieldTx[mrbPos] = datamrb[0]
         i2cPeripheralHandler.dataFieldTx[mrbPos + 1] = datamrb[1]
 
-        btnPos = i2cPeripheralHandler.regs.NBTN - i2cPeripheralHandler.regs.OFFSET
+        btnPos = i2cPeripheralHandler.regs.NBTN
         i2cPeripheralHandler.dataFieldTx[btnPos] = button.value()
 
         time.sleep(0.5)
