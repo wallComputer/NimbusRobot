@@ -38,33 +38,27 @@ def callBackFunc(tim):
             i2cPeripheralHandler.read(reg)
             if reg is i2cPeripheralHandler.regs.NLED:
                 led_onboard.value(
-                    i2cPeripheralHandler.dataFieldRx[i2cPeripheralHandler.regs.NLED])
+                    i2cPeripheralHandler.dataFieldRx[reg])
             elif reg is i2cPeripheralHandler.regs.NMSC:
                 motorSwitchControl.value(
-                    i2cPeripheralHandler.dataFieldRx[i2cPeripheralHandler.regs.NMSC])
+                    i2cPeripheralHandler.dataFieldRx[reg])
             elif reg is i2cPeripheralHandler.regs.NNPXL:
-                npxPos = i2cPeripheralHandler.regs.NNPXL
                 ws2812b.pixels_set(0, (
-                    i2cPeripheralHandler.dataFieldRx[npxPos], i2cPeripheralHandler.dataFieldRx[npxPos + 1],
-                    i2cPeripheralHandler.dataFieldRx[npxPos + 2]))
+                    i2cPeripheralHandler.dataFieldRx[reg], i2cPeripheralHandler.dataFieldRx[reg + 1],
+                    i2cPeripheralHandler.dataFieldRx[reg + 2]))
                 ws2812b.pixels_show()
             elif reg is i2cPeripheralHandler.regs.NBCV:
-                bcvPos = i2cPeripheralHandler.regs.NBCV
-                batteryCutoffVoltage = list2ToContinuousConverter(i2cPeripheralHandler.dataFieldRx[bcvPos:bcvPos + 2],
-                                                                  100)
+                batteryCutoffVoltage = list2ToContinuousConverter(i2cPeripheralHandler.dataFieldRx[reg:reg + 2], 100)
             elif reg is i2cPeripheralHandler.regs.NMAS:
-                mltPos = reg
-                motorSpeeds[0] = negativeTester(i2cPeripheralHandler.dataFieldRx[mltPos], 1)
-                motorSpeeds[1] = negativeTester(i2cPeripheralHandler.dataFieldRx[mltPos + 1], 1)
-                motorSpeeds[2] = negativeTester(i2cPeripheralHandler.dataFieldRx[mltPos + 2], 1)
-                motorSpeeds[3] = negativeTester(i2cPeripheralHandler.dataFieldRx[mltPos + 3], 1)
+                motorSpeeds[0] = negativeTester(i2cPeripheralHandler.dataFieldRx[reg], 1)
+                motorSpeeds[1] = negativeTester(i2cPeripheralHandler.dataFieldRx[reg + 1], 1)
+                motorSpeeds[2] = negativeTester(i2cPeripheralHandler.dataFieldRx[reg + 2], 1)
+                motorSpeeds[3] = negativeTester(i2cPeripheralHandler.dataFieldRx[reg + 3], 1)
             elif reg is i2cPeripheralHandler.regs.NRTSP:
-                tspPos = reg
-                robotTwistSpeed = i2cPeripheralHandler.dataFieldRx[tspPos]
+                robotTwistSpeed = i2cPeripheralHandler.dataFieldRx[reg]
             elif reg is i2cPeripheralHandler.regs.NRTAD:
-                tarPos = reg
                 robotTwistAngle = negativeTester(int(
-                    list2ToContinuousConverter(i2cPeripheralHandler.dataFieldRx[tarPos:tarPos + 2], 1)), 2)
+                    list2ToContinuousConverter(i2cPeripheralHandler.dataFieldRx[reg:reg + 2], 1)), 2)
 
 
 i2cPeripheralHandler = nimbusI2CPeripheral(callBackFunction=callBackFunc,
