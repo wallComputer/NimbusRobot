@@ -1,6 +1,39 @@
 import i2cPeripheral
 from machine import Timer
 from nrpd import *
+import math
+
+
+def list2ToContinuousConverter(data, scale):
+    return (data[0] << 8 | data[1]) / scale
+
+
+def continuousToList2Converter(analogValue, scale):
+    data = [0, 0]
+    analogValue = math.ceil(analogValue * scale)
+    data[0] = (analogValue & 0xFF00) >> 8
+    data[1] = analogValue & 0x00FF
+    return data
+
+
+def negativeTester(data, size):
+    halfSize = (1 << (size * 8)) // 2
+    if data & halfSize is not 0:
+        data = -1 * (halfSize * 2 - data)
+    return data
+
+
+def list4ToContinuousConverter(data):
+    return negativeTester(data[0] << 24 | data[1] << 16 | data[2] << 8 | data[3], 4)
+
+
+def continuousTolist4Converter(encoderValue):
+    data = [0, 0, 0, 0]
+    data[0] = (encoderValue & 0xFF000000) >> 24
+    data[1] = (encoderValue & 0x00FF0000) >> 16
+    data[2] = (encoderValue & 0x0000FF00) >> 8
+    data[3] = (encoderValue & 0x000000FF)
+    return data
 
 
 class _Registers:
@@ -36,7 +69,7 @@ class nimbusI2CPeripheral:
 
     def __init__(self, callBackFunction, initialBatteryCutoff, frequency=50, i2cAddress=0x55):
         self.regs = _Registers()
-        self.singeByteRegisters = [self.regs.NLED, self.regs.NMSC, # RW 1 Byte
+        self.singeByteRegisters = [self.regs.NLED, self.regs.NMSC,  # RW 1 Byte
                                    self.regs.NBTN, self.regs.NRTSP, self.regs.NRTTS]
         self.doubleByteRegisters = [self.regs.NBLV, self.regs.NBCV, self.regs.NPBV, self.regs.NMLTC,
                                     self.regs.NMLBC, self.regs.NMRTC, self.regs.NMRBC, self.regs.NRTAD]  # RW 2 Bytes
@@ -48,7 +81,7 @@ class nimbusI2CPeripheral:
         # check sign before assigning to motor controller for NMXXTS data
         # Store Packed Bytes correctly in NMXXTR locations.
         self.encoderRegister = [self.regs.NMLTTS, self.regs.NMLBTS, self.regs.NMRTTS, self.regs.NMRBTS,
-                                self.regs.NMLTTR, self.regs.NMLBTR, self.regs.NMRTTR, self.regs.NMRBTR] # Store bytes.
+                                self.regs.NMLTTR, self.regs.NMLBTR, self.regs.NMRTTR, self.regs.NMRBTR]  # Store bytes.
         self.dataFieldTx = bytearray([0] * self.regs.DC)
         self.dataFieldRx = bytearray([0] * self.regs.DC)
         self.dataFieldTx[self.regs.NBCV - self.regs.OFFSET] = initialBatteryCutoff[0]
