@@ -2,3 +2,9 @@
 .idea/
 /micropython-async/
 /Example_100_MISC/
+/Example_006_MOTORS_ENCODERS/.plotterData/data.py
+/Example_006_MOTORS_ENCODERS/.plotterData/data2.py
+/Example_006_MOTORS_ENCODERS/.plotterData/data3.py
+/Example_006_MOTORS_ENCODERS/.plotterData/data4.py
+/Example_006_MOTORS_ENCODERS/.plotterData/data5.py
+/Example_006_MOTORS_ENCODERS/.plotterData/plotter.py
