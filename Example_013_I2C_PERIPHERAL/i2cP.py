@@ -3,24 +3,25 @@
 import machine
 import time
 
-from lib import adcWTMux, ws2812b
+from lib import adcWTMux, ws2812b, motors
 from nrpd import *
 
 from lib.nimbusI2CPeripheral import nimbusI2CPeripheral, negativeTester, \
     list2ToContinuousConverter, continuousToList2Converter
 
 led_onboard = machine.Pin(19, machine.Pin.OUT)
-motorSwitchControl = machine.Pin(MOTOR_SWITCH_PIN, machine.Pin.OUT)
 button = machine.Pin(BUTTON_PIN, machine.Pin.IN)
 adc = adcWTMux.adcWTMux()
 batteryCutoffVoltage = 3.8
-motorSpeeds = [0, 0, 0, 0]
+motorController = motors.motorControllers()
 robotTwistSpeed = 0
 robotTwistAngle = 0
 robotTwistTime = 1500
 
+# TODO: Go to Motor Encoders, add callback to check immediate change.
+# TODO Add those callbacks here to update i2cPeripheralHandler.dataFieldRx immediately.
 def callBackFunc(tim):
-    global i2cPeripheralHandler, batteryCutoffVoltage, motorSpeeds, robotTwistSpeed, robotTwistAngle, robotTwistTime
+    global i2cPeripheralHandler, batteryCutoffVoltage, motorController, robotTwistSpeed, robotTwistAngle, robotTwistTime
     rxS = i2cPeripheralHandler.p_i2c.rxFifoSize()
     wI = i2cPeripheralHandler.p_i2c.anyRead()
     rI = i2cPeripheralHandler.p_i2c.any()
@@ -40,20 +41,18 @@ def callBackFunc(tim):
                 led_onboard.value(
                     i2cPeripheralHandler.dataFieldRx[reg])
             elif reg is i2cPeripheralHandler.regs.NMSC:
-                motorSwitchControl.value(
-                    i2cPeripheralHandler.dataFieldRx[reg])
+                motorController.MSP = i2cPeripheralHandler.dataFieldRx[reg]
             elif reg is i2cPeripheralHandler.regs.NNPXL:
-                ws2812b.pixels_set(0, (
-                    i2cPeripheralHandler.dataFieldRx[reg], i2cPeripheralHandler.dataFieldRx[reg + 1],
+                ws2812b.pixels_set(0, (i2cPeripheralHandler.dataFieldRx[reg], i2cPeripheralHandler.dataFieldRx[reg + 1],
                     i2cPeripheralHandler.dataFieldRx[reg + 2]))
                 ws2812b.pixels_show()
             elif reg is i2cPeripheralHandler.regs.NBCV:
                 batteryCutoffVoltage = list2ToContinuousConverter(i2cPeripheralHandler.dataFieldRx[reg:reg + 2], 100)
             elif reg is i2cPeripheralHandler.regs.NMAS:
-                motorSpeeds[0] = negativeTester(i2cPeripheralHandler.dataFieldRx[reg], 1)
-                motorSpeeds[1] = negativeTester(i2cPeripheralHandler.dataFieldRx[reg + 1], 1)
-                motorSpeeds[2] = negativeTester(i2cPeripheralHandler.dataFieldRx[reg + 2], 1)
-                motorSpeeds[3] = negativeTester(i2cPeripheralHandler.dataFieldRx[reg + 3], 1)
+                motorController.MLT = negativeTester(i2cPeripheralHandler.dataFieldRx[reg], 1)
+                motorController.MLB = negativeTester(i2cPeripheralHandler.dataFieldRx[reg + 1], 1)
+                motorController.MRT = negativeTester(i2cPeripheralHandler.dataFieldRx[reg + 2], 1)
+                motorController.MRB = negativeTester(i2cPeripheralHandler.dataFieldRx[reg + 3], 1)
             elif reg is i2cPeripheralHandler.regs.NRTSP:
                 robotTwistSpeed = i2cPeripheralHandler.dataFieldRx[reg]
             elif reg is i2cPeripheralHandler.regs.NRTAD:
@@ -62,6 +61,10 @@ def callBackFunc(tim):
             elif reg is i2cPeripheralHandler.regs.NRTTMS:
                 robotTwistTime = int(list2ToContinuousConverter(i2cPeripheralHandler.dataFieldRx[reg:reg + 2],1))
                 print(robotTwistTime)
+            elif reg in i2cPeripheralHandler.encoderRegister:
+                if reg is i2cPeripheralHandler.regs.NMLTS:
+                    pass
+
 
 
 i2cPeripheralHandler = nimbusI2CPeripheral(callBackFunction=callBackFunc,
