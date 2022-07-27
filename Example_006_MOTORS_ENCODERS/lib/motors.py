@@ -1,179 +1,153 @@
+import math
 from machine import Pin, PWM
 from nrpd import *
-from motorProfiles import *
-import rotary_irq_rp2
+from array import array
+import rp2
+
+
+def make_isr(pos):
+    vals = array("i", (1, -1, 0))  # vals[2] is previous x
+
+    @micropython.viper
+    def isr(sm):
+        i = ptr32(pos)  # Position
+        g = ptr32(vals)
+        while sm.rx_fifo():
+            v: int = int(sm.get()) & 3
+            i[0] += g[int((v >> 1) ^ g[2])]
+            g[2] = v & 1
+
+    return isr
+
+
+class Encoder:
+    def __init__(self, sm_no, base_pin, flip=False):
+        self._encoderCount = 0
+        self._flip = -1 if flip else 1
+        self._pos = array("i", (0,))  # [pos]
+        self.sm = rp2.StateMachine(sm_no, self.pio_quadrature, in_base=base_pin)
+        self.sm.irq(make_isr(self._pos))  # Instantiate the closure
+        self.sm.exec("set(y, 99)")  # Initialise y: guarantee different to the input
+        self.sm.active(1)
+
+    @rp2.asm_pio()
+    def pio_quadrature(in_init=rp2.PIO.IN_LOW):
+        wrap_target()
+        label("again")
+        in_(pins, 2)
+        mov(x, isr)
+        jmp(x_not_y, "push_data")
+        mov(isr, null)
+        jmp("again")
+        label("push_data")
+        push()
+        irq(block, rel(0))
+        mov(y, x)
+        wrap()
+
+    @property
+    def encoderCount(self):
+        self._encoderCount = self._pos[0] * self._flip
+        return self._encoderCount
 
 
 class motorControllers:
 
-    @staticmethod
-    def mapRange(oValue, oMin, oMax, nMin, nMax):
-        oSpan = oMax - oMin
-        nSpan = nMax - nMin
-        scale = (oValue - oMin) / oSpan
-        nValue = nMin + scale * nSpan
-        return nValue
-
-    def __init__(self, setEncoders=True):
+    def __init__(self, motorFreq=100, wheelDiameter_m=0.037, encoderPips=12, motorGearRatio=110):
         self._MSP = Pin(MOTOR_SWITCH_PIN, Pin.OUT)
         self._MLT = 0
         self.__MLTSpeed = PWM(Pin(MLTIN1))
-        self.__MLTSpeed.freq(MLTf)
+        self.__MLTSpeed.freq(motorFreq)
         self.__MLTSpeed.duty_u16(65535)
         self.__MLTDirection = Pin(MLTIN2, Pin.OUT)
         self.__MLTDirection.value(1)
         self._MLB = 0
         self.__MLBSpeed = PWM(Pin(MLBIN1))
-        self.__MLBSpeed.freq(MLBf)
+        self.__MLBSpeed.freq(motorFreq)
         self.__MLBSpeed.duty_u16(65535)
         self.__MLBDirection = Pin(MLBIN2, Pin.OUT)
         self.__MLBDirection.value(1)
         self._MRT = 0
         self.__MRTSpeed = PWM(Pin(MRTIN1))
-        self.__MRTSpeed.freq(MRTf)
+        self.__MRTSpeed.freq(motorFreq)
         self.__MRTSpeed.duty_u16(65535)
         self.__MRTDirection = Pin(MRTIN2, Pin.OUT)
         self.__MRTDirection.value(1)
         self._MRB = 0
         self.__MRBSpeed = PWM(Pin(MRBIN1))
-        self.__MRBSpeed.freq(MRBf)
+        self.__MRBSpeed.freq(motorFreq)
         self.__MRBSpeed.duty_u16(65535)
         self.__MRBDirection = Pin(MRBIN2, Pin.OUT)
         self.__MRBDirection.value(1)
         self._MA = [0, 0, 0, 0]  # Motor All Speed
 
-        self.__useEncoders = setEncoders
-        if setEncoders:
-            self.__encoderLeftTopMotor = rotary_irq_rp2.RotaryIRQ(pin_num_clk=ELTB, pin_num_dt=ELTA,
-                                                                  min_val=-2147483647, max_val=2147483647, start_val=0,
-                                                                  reverse=True,
-                                                                  range_mode=rotary_irq_rp2.RotaryIRQ.RANGE_BOUNDED,
-                                                                  pull_up=True, half_step=False, invert=False)
-            self.__encoderLeftBottomMotor = rotary_irq_rp2.RotaryIRQ(pin_num_clk=ELBA, pin_num_dt=ELBB,
-                                                                     min_val=-2147483647, max_val=2147483647,
-                                                                     start_val=0,
-                                                                     reverse=True,
-                                                                     range_mode=rotary_irq_rp2.RotaryIRQ.RANGE_BOUNDED,
-                                                                     pull_up=True, half_step=True, invert=False)
-            self.__encoderRightTopMotor = rotary_irq_rp2.RotaryIRQ(pin_num_clk=ERTB, pin_num_dt=ERTA,
-                                                                   min_val=-2147483647, max_val=2147483647, start_val=0,
-                                                                   reverse=True,
-                                                                   range_mode=rotary_irq_rp2.RotaryIRQ.RANGE_BOUNDED,
-                                                                   pull_up=True, half_step=True, invert=False)
-            self.__encoderRightBottomMotor = rotary_irq_rp2.RotaryIRQ(pin_num_clk=ERBB, pin_num_dt=ERBA,
-                                                                      min_val=-2147483647, max_val=2147483647,
-                                                                      start_val=0,
-                                                                      reverse=True,
-                                                                      range_mode=rotary_irq_rp2.RotaryIRQ.RANGE_BOUNDED,
-                                                                      pull_up=True, half_step=True, invert=False)
+        self._encoderMLT = Encoder(0, Pin(ELTA), flip=True)
+        self._encoderMLB = Encoder(1, Pin(ELBA), flip=True)
+        self._encoderMRT = Encoder(2, Pin(ERTA), flip=False)
+        self._encoderMRB = Encoder(3, Pin(ERBB), flip=True)
+        self._ELTCActual = 0
+        self._ELBCActual = 0
+        self._ERTCActual = 0
+        self._ERBCActual = 0
+        self._ELTCSet = 0
+        self._ELBCSet = 0
+        self._ERTCSet = 0
+        self._ERBCSet = 0
 
-        self._ELTMActual = 0
-        self._ELBMActual = 0
-        self._ERTMActual = 0
-        self._ERBMActual = 0
-        self._ELTMSet = 0
-        self._ELBMSet = 0
-        self._ERTMSet = 0
-        self._ERBMSet = 0
-
-    def setCallBackFunctions(self,
-                             leftTopMotorCallback=None,
-                             leftBottomMotorCallback=None,
-                             rightTopMotorCallback=None,
-                             rightBottomMotorCallback=None):
-        if self.__useEncoders:
-            if leftTopMotorCallback is not None:
-                self.__encoderLeftTopMotor.add_listener(leftTopMotorCallback)
-            if leftBottomMotorCallback is not None:
-                self.__encoderLeftBottomMotor.add_listener(leftBottomMotorCallback)
-            if rightTopMotorCallback is not None:
-                self.__encoderRightTopMotor.add_listener(rightTopMotorCallback)
-            if rightBottomMotorCallback is not None:
-                self.__encoderRightBottomMotor.add_listener(rightBottomMotorCallback)
+        self.__WC_m = math.pi * wheelDiameter_m  # Wheel Circumference in m
+        self.__ECPR = encoderPips * motorGearRatio
+        self._WRBDActual = 0
+        self._WRTDActual = 0
+        self._WLBDActual = 0
+        self._WLTDActual = 0
 
     @property
     def ELTMActual(self):
-        if self.__useEncoders:
-            return self.__encoderLeftTopMotor.value()
-        else:
-            return 0
+        return self._encoderMLT.encoderCount
 
     @property
     def ELBMActual(self):
-        if self.__useEncoders:
-            return self.__encoderLeftBottomMotor.value()
-        else:
-            return 0
+        return self._encoderMLB.encoderCount
 
     @property
     def ERTMActual(self):
-        if self.__useEncoders:
-            return self.__encoderRightTopMotor.value()
-        else:
-            return 0
+        return self._encoderMRT.encoderCount
 
     @property
     def ERBMActual(self):
-        if self.__useEncoders:
-            return self.__encoderRightBottomMotor.value()
-        else:
-            return 0
+        return self._encoderMRB.encoderCount
 
     @property
     def ELTMSet(self):
-        if self.__useEncoders:
-            return self._ELTMSet
-        else:
-            return 0
+        return self._ELTCSet
 
     @ELTMSet.setter
     def ELTMSet(self, encoderCount):
-        if self.__useEncoders:
-            self._ELTMSet = encoderCount
-        else:
-            self._ELTMSet = 0
+        self._ELTCSet = encoderCount
 
     @property
     def ELBMSet(self):
-        if self.__useEncoders:
-            return self._ELBMSet
-        else:
-            return 0
+        return self._ELBCSet
 
     @ELBMSet.setter
     def ELBMSet(self, encoderCount):
-        if self.__useEncoders:
-            self._ELBMSet = encoderCount
-        else:
-            self._ELBMSet = 0
+        self._ELBCSet = encoderCount
 
     @property
     def ERTMSet(self):
-        if self.__useEncoders:
-            return self._ERTMSet
-        else:
-            return 0
+        return self._ERTCSet
 
     @ERTMSet.setter
     def ERTMSet(self, encoderCount):
-        if self.__useEncoders:
-            self._ERTMSet = encoderCount
-        else:
-            self._ERTMSet = 0
+        self._ERTCSet = encoderCount
 
     @property
     def ERBMSet(self):
-        if self.__useEncoders:
-            return self._ERBMSet
-        else:
-            return 0
+        return self._ERBCSet
 
     @ERBMSet.setter
     def ERBMSet(self, encoderCount):
-        if self.__useEncoders:
-            return self._ERBMSet
-        else:
-            self.ERBMSet = 0
+        self._ERBCSet = encoderCount
 
     @property
     def MSP(self):
@@ -194,13 +168,9 @@ class motorControllers:
         dutyValue = 65535
         directionValue = 1
         if speed > 0:
-            speed = motorControllers.mapRange(speed, 0, 100, MLTFm, 100)
-            # print("Set Speed% = {Speed:} VDIFF={VDIFF:0.2f}".format(Speed=speed, VDIFF=speed/100*3.3))
             dutyValue = int(speed * 65535 / 100)
             directionValue = 0
         elif speed < 0:
-            speed = motorControllers.mapRange(speed, 0, -100, MLTBm, -100)
-            # print("Set Speed% = {Speed:} VDIFF={VDIFF:0.2f}".format(Speed=speed, VDIFF=-speed/100*3.3))
             dutyValue = int(65535 + speed * 65535 / 100)
             directionValue = 1
         self.__MLTDirection.value(directionValue)
@@ -217,13 +187,9 @@ class motorControllers:
         dutyValue = 65535
         directionValue = 1
         if speed > 0:
-            speed = motorControllers.mapRange(speed, 0, 100, MLBFm, 100)
-            # print("Set Speed% = {Speed:} VDIFF={VDIFF:0.2f}".format(Speed=speed, VDIFF=speed / 100 * 3.3))
             dutyValue = int(speed * 65535 / 100)
             directionValue = 0
         elif speed < 0:
-            speed = motorControllers.mapRange(speed, 0, -100, MLBBm, -100)
-            # print("Set Speed% = {Speed:} VDIFF={VDIFF:0.2f}".format(Speed=speed, VDIFF=-speed / 100 * 3.3))
             dutyValue = int(65535 + speed * 65535 / 100)
             directionValue = 1
         self.__MLBDirection.value(directionValue)
@@ -240,13 +206,9 @@ class motorControllers:
         dutyValue = 65535
         directionValue = 1
         if speed > 0:
-            speed = motorControllers.mapRange(speed, 0, 100, MRTFm, 100)
-            # print("Set Speed% = {Speed:} VDIFF={VDIFF:0.2f}".format(Speed=speed, VDIFF=speed/100*3.3))
             dutyValue = int(speed * 65535 / 100)
             directionValue = 0
         elif speed < 0:
-            speed = motorControllers.mapRange(speed, 0, -100, MRTBm, -100)
-            # print("Set Speed% = {Speed:} VDIFF={VDIFF:0.2f}".format(Speed=speed, VDIFF=-speed/100*3.3))
             dutyValue = int(65535 + speed * 65535 / 100)
             directionValue = 1
         self.__MRTDirection.value(directionValue)
@@ -263,13 +225,9 @@ class motorControllers:
         dutyValue = 65535
         directionValue = 1
         if speed > 0:
-            speed = motorControllers.mapRange(speed, 0, 100, MRBFm, 100)
-            # print("Set Speed% = {Speed:} VDIFF={VDIFF:0.2f}".format(Speed=speed, VDIFF=speed / 100 * 3.3))
             dutyValue = int(speed * 65535 / 100)
             directionValue = 0
         elif speed < 0:
-            speed = motorControllers.mapRange(speed, 0, -100, MRBBm, -100)
-            # print("Set Speed% = {Speed:} VDIFF={VDIFF:0.2f}".format(Speed=speed, VDIFF=-speed / 100 * 3.3))
             dutyValue = int(65535 + speed * 65535 / 100)
             directionValue = 1
         self.__MRBDirection.value(directionValue)
@@ -285,3 +243,23 @@ class motorControllers:
         self.MLB = speeds[1]
         self.MRT = speeds[2]
         self.MRB = speeds[3]
+
+    @property
+    def WLTDActual(self):
+        self._WLTDActual = self._encoderMLT.encoderCount * self.__WC_m / self.__ECPR
+        return self._WLTDActual
+
+    @property
+    def WLBDActual(self):
+        self._WLBDActual = self._encoderMLB.encoderCount * self.__WC_m / self.__ECPR
+        return self._WLBDActual
+
+    @property
+    def WRTDActual(self):
+        self._WRTDActual = self._encoderMRT.encoderCount * self.__WC_m / self.__ECPR
+        return self._WRTDActual
+
+    @property
+    def WRBDActual(self):
+        self._WRBDActual = self._encoderMRB.encoderCount * self.__WC_m / self.__ECPR
+        return self._WRBDActual
