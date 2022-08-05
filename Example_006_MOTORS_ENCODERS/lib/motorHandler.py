@@ -578,4 +578,4 @@ class nimbusMotorController:
         if timeOut is None or timeOut <= 0:
             self._timeOut = nimbusMotorController.__defaultTimeout
         else:
-            self._timeOut = min(timeOut, nimbusMotorController.__minimumTimeout)
+            self._timeOut = max(timeOut, nimbusMotorController.__minimumTimeout)
