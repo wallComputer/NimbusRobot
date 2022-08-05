@@ -11,7 +11,7 @@ class dcMotor:
     __maximumAllowedSpeed = 65535
     __defaultPIDParams = [50, 0, 6]  # Used for micro-metal gear motor for encoder count PID controller.
 
-    # noinspection PyMethodParameters
+
     def make_isr(pos):
         vals = array("i", (1, -1, 0))  # vals[2] is previous x
 
@@ -26,7 +26,6 @@ class dcMotor:
 
         return isr
 
-    # noinspection PyArgumentList,PyUnresolvedReferences,PyTypeChecker,PyMethodParameters,PyCallingNonCallable
     class Encoder:
         def __init__(self,
                      sm_no: int,
@@ -36,11 +35,11 @@ class dcMotor:
 
             Create Encoder Class. Original Code taken from https://github.com/micropython/micropython/pull/6894#issuecomment-1002717393
 
-            :param sm_no: State machine Number Must be an integer between 0 and 7 and unique to each encoder
+            :param sm_no: State machine Number. Must be an integer between 0 and 7 and unique to each encoder.
 
-            :param base_pin: First Pin of the encoder pair. Next Pin is taken as the second input to the encoder
+            :param base_pin: First Pin of the encoder pair. Next Pin is taken as the second input to the encoder.
 
-            :param flip: Flip the sign of encoder count. Useful if you cannot change encoder pins in hardware
+            :param flip: Flip the sign of encoder count. Useful if you cannot change encoder pins in hardware.
             """
             self._flip = -1 if flip else 1
             self._pos = array("i", (0,))  # [pos]
@@ -49,7 +48,6 @@ class dcMotor:
             self.sm.exec("set(y, 99)")  # Initialise y: guarantee different to the input
             self.sm.active(1)
 
-        # noinspection PyUnresolvedReferences
         @rp2.asm_pio()
         def pio_quadrature(in_init=rp2.PIO.IN_LOW):
             wrap_target()
@@ -95,9 +93,9 @@ class dcMotor:
 
             :param PIDParams: [Kp, Ki, Kd] list
 
-            :param setPointThreshold: if average Encoder count is within the setPoint ± this value, the motor is stopped and controller is expected to be reset (by whoever calls the calculation function)
+            :param setPointThreshold: if average Encoder count is within the setPoint ± this value, the motor is stopped and controller is expected to be reset (by whoever calls the calculation function).
 
-            :param thresholdSize: Size used for calculating moving average of the Encoder Count
+            :param thresholdSize: Size used for calculating moving average of the Encoder Count.
             """
             self._Kp = PIDParams[0]
             self._Ki = PIDParams[1]
@@ -116,9 +114,9 @@ class dcMotor:
 
             Calculates the next plant input U based on current values.
 
-            :param sensorReading: Input to the controller. This will be used to find error against the setPoint of the controller
-            :param delT: to be used with the Integral and Differential term
-            :return: Tuple of speed to be applied to the plant/motor and if threshold average has been reached
+            :param sensorReading: Input to the controller. This will be used to find error against the setPoint of the controller.
+            :param delT: to be used with the Integral and Differential term.
+            :return: Tuple of speed to be applied to the plant/motor and if threshold average has been reached.
             """
             err = self._setPoint - sensorReading
             delErr_dt = 0
@@ -179,9 +177,9 @@ class dcMotor:
 
         Callback function for PID controller. Since the period of this function is not strictly the sampling frequency, the function calculates its own ∆t
         If the controller mentions that the setpoint is reached and within threshold, the function turns off the motor, resets the controller and the encoder,
-        as well as turns off itself as the timer callback. To restart, set the encoder set point for the motor
+        as well as turns off itself as the timer callback. To restart, set the encoder set point for the motor.
 
-        :param tim: timer for which the callback function is used
+        :param tim: timer for which the callback function is used.
         :return: None
         """
         currentTms = time.ticks_ms()
@@ -203,17 +201,17 @@ class dcMotor:
         Each MXXParam is a dictionary with keys
 
         - *'motorID': Motor ID from {0, 1, 2, 3}
-        - *'MPINS'*: [Pin1,Pin2] of Motor. GPIO Pin from 0 to 28 for RP2040. Must be given and be unique for a motor
+        - *'MPINS'*: [Pin1,Pin2] of Motor. GPIO Pin from 0 to 28 for RP2040. Must be given and be unique for a motor.
         - *'motorFreq'*: Frequency of motor. Refer datasheet or manufacturer. Default is 75Hz
-        - *'minMax'*: List for minimum and maximum speed of the motor. Minimum is -65535, maximum is 65535
-        - *'sm_no'*: RP2040 PIO State machine number in [0,7]. Must be unique for each Encoder and not used elsewhere. -1 if Not to use Encoder. No filtering and control values necessary then
-        - *'EncoderPin1'*: First Pin of the encoder. Pins must be successive and unique for each Motor
-        - *'flipEncoder'*: Reverse Encoder count if needed. False by default
-        - *'usePID_Distance'*: True if PID Control of Encoder Count/ Wheel distance is needed
-        - *'PIDParams_Distance'*: Distance Controller [P, I, D] values in list
-        - *'PIDSamplingFrequency'*: Sampling Frequency of the PID Controller
+        - *'minMax'*: List for minimum and maximum speed of the motor. Minimum is -65535, maximum is 65535.
+        - *'sm_no'*: RP2040 PIO State machine number in [0,7]. Must be unique for each Encoder and not used elsewhere. -1 if Not to use Encoder. No filtering and control values necessary then.
+        - *'EncoderPin1'*: First Pin of the encoder. Pins must be successive and unique for each Motor.
+        - *'flipEncoder'*: Reverse Encoder count if needed. False by default.
+        - *'usePID_Distance'*: True if PID Control of Encoder Count/ Wheel distance is needed.
+        - *'PIDParams_Distance'*: Distance Controller [P, I, D] values in list.
+        - *'PIDSamplingFrequency'*: Sampling Frequency of the PID Controller.
 
-        :param motorParams: Dictionary with parameters to initialise a motor
+        :param motorParams: Dictionary with parameters to initialise a motor.
         """
         self._motorID = motorParams['motorID']
         try:
@@ -256,7 +254,6 @@ class dcMotor:
         if 'PIDSamplingFrequency' not in motorParams:
             motorParams['PIDSamplingFrequency'] = dcMotor.__defaultPIDSamplingFrequency
         self._timerPeriod = int(1000 / motorParams['PIDSamplingFrequency'])
-        # noinspection PyArgumentList
         self._timer = Timer()
         self._timer.init(mode=Timer.PERIODIC,
                          period=self._timerPeriod,
@@ -266,10 +263,10 @@ class dcMotor:
         """
 
         Sets the motor speed if speed argument is given. Otherwise, returns the current speed.
-        A negative speed value indicates the motor is rotating in reverse direction
+        A negative speed value indicates the motor is rotating in reverse direction.
 
         :param speed: Speed of the motor from [dcMotor._minU, dcMotor._maxU]
-        :return: current speed of the motor
+        :return: current speed of the motor.
         """
         if speed is not None:
             if speed < self._minU:
@@ -299,10 +296,10 @@ class dcMotor:
         """
 
         Sets or Gets the encoder set Point.
-        if being set, the controller and encoder are reset and the timer callback is reattached to the timer
+        if being set, the controller and encoder are reset and the timer callback is reattached to the timer.
 
-        :param encoderSetPoint: setPoint value
-        :return: current encoderSetPoint
+        :param encoderSetPoint: setPoint value.
+        :return: current encoderSetPoint.
         """
         if encoderSetPoint is not None:
             self._timer.init(callback=None)
@@ -315,7 +312,7 @@ class dcMotor:
                              callback=self._selfCallback)
         return self._PIDDistanceController.setPoint()
 
-    def minMax(self, minMaxList: [int, int] = None) -> [int, int]:
+    def minMax(self, minMaxList: list[int, int] = None) -> list[int, int]:
         """
 
         Sets or gets the minimum and maximum speed of the motor. The values must be between [-65535,65535]
@@ -341,7 +338,7 @@ class dcMotor:
         self._PIDDistanceController.resetController()
         self._encoder.resetEncoder()
 
-    def controllerParams(self, PIDParams: [float, float, float] = None) -> [float, float, float]:
+    def controllerParams(self, PIDParams: list[float, float, float] = None) -> list[float, float, float]:
         """
 
         Sets or Gets the controller [Kp, Ki, Kd] values.
