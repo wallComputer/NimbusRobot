@@ -1,7 +1,7 @@
-from micropython import const
 from nrpd import *
-from machine import Pin
+from machine import Pin, Timer
 import motor
+import math
 
 
 class nimbusMotorController:
@@ -11,13 +11,23 @@ class nimbusMotorController:
     __pi = 3.141592653589793
     __encoderCountsToDistance = __wheelDiameter * __pi / __gearRatio / __encoderPoleCount  # mm
     __distanceToEncoderCounts = 1 / __encoderCountsToDistance  # 1/mm
+    __defaultTimeout = 1000
+    __minimumTimeout = 25
+    __defaultTimerBehaviour = 1  # for used, 0 for not used.
+
+    def _selfCallBack(self, tim):
+        self._MLT.motorSpeed(speed=0)
+        self._MLB.motorSpeed(speed=0)
+        self._MRT.motorSpeed(speed=0)
+        self._MRB.motorSpeed(speed=0)
 
     def __init__(self,
                  MSP: int = None,
                  MLTParams: dict = None,
                  MLBParams: dict = None,
                  MRTParams: dict = None,
-                 MRBParams: dict = None):
+                 MRBParams: dict = None,
+                 timeOut: int = None):
         """
 
         :param MSP: Motor Switch Pin.
@@ -36,6 +46,9 @@ class nimbusMotorController:
         self._MLB = motor.dcMotor(MLBParams)
         self._MRT = motor.dcMotor(MRTParams)
         self._MRB = motor.dcMotor(MRBParams)
+        self._timeOut = timeOut if timeOut is not None else nimbusMotorController.__defaultTimeout
+        self._timerBehaviour = nimbusMotorController.__defaultTimerBehaviour
+        self._timer = Timer()
 
     def MSP(self, state: int = None) -> int:
         """
@@ -97,7 +110,7 @@ class nimbusMotorController:
             self._MRB.motorSpeed(speed)
         return self._MRB.motorSpeed()
 
-    def MSA(self, speedList: [int, int, int, int]) -> [int, int, int, int]:
+    def MSA(self, speedList: list[int, int, int, int] = None) -> list[int, int, int, int]:
         """
 
         Sets or Gets the speed of all motors at once.
@@ -205,7 +218,7 @@ class nimbusMotorController:
             self._MRB.encoderSetPoint(encoderSetPoint=encoderSetPoint)
         return self._MRB.encoderSetPoint()
 
-    def MESPA(self, encoderSetPointList: [int, int, int, int] = None) -> [int, int, int, int]:
+    def MESPA(self, encoderSetPointList: list[int, int, int, int] = None) -> list[int, int, int, int]:
         """
 
         Sets or gets the encoder set point for all motors at once.
@@ -218,7 +231,8 @@ class nimbusMotorController:
             self._MLB.encoderSetPoint(encoderSetPoint=encoderSetPointList[1])
             self._MRT.encoderSetPoint(encoderSetPoint=encoderSetPointList[2])
             self._MRB.encoderSetPoint(encoderSetPoint=encoderSetPointList[3])
-        return [self._MLT.encoderSetPoint(), self._MLB.encoderSetPoint(), self._MRT.encoderSetPoint(), self._MRB.encoderSetPoint()]
+        return [self._MLT.encoderSetPoint(), self._MLB.encoderSetPoint(), self._MRT.encoderSetPoint(),
+                self._MRB.encoderSetPoint()]
 
     def MLTD(self) -> float:
         """
@@ -273,7 +287,8 @@ class nimbusMotorController:
         :return: current encoder set point in mm
         """
         if distanceSetPoint is not None:
-            self._MLT.encoderSetPoint(encoderSetPoint=int(distanceSetPoint*nimbusMotorController.__distanceToEncoderCounts))
+            self._MLT.encoderSetPoint(
+                encoderSetPoint=int(distanceSetPoint * nimbusMotorController.__distanceToEncoderCounts))
         return self._MLT.encoderSetPoint() * nimbusMotorController.__encoderCountsToDistance
 
     def MLBDSP(self, distanceSetPoint: float = None) -> float:
@@ -285,7 +300,8 @@ class nimbusMotorController:
         :return: current encoder set point in mm
         """
         if distanceSetPoint is not None:
-            self._MLB.encoderSetPoint(encoderSetPoint=int(distanceSetPoint*nimbusMotorController.__distanceToEncoderCounts))
+            self._MLB.encoderSetPoint(
+                encoderSetPoint=int(distanceSetPoint * nimbusMotorController.__distanceToEncoderCounts))
         return self._MLB.encoderSetPoint() * nimbusMotorController.__encoderCountsToDistance
 
     def MRTDSP(self, distanceSetPoint: float = None) -> float:
@@ -297,7 +313,8 @@ class nimbusMotorController:
         :return: current encoder set point in mm
         """
         if distanceSetPoint is not None:
-            self._MRT.encoderSetPoint(encoderSetPoint=int(distanceSetPoint*nimbusMotorController.__distanceToEncoderCounts))
+            self._MRT.encoderSetPoint(
+                encoderSetPoint=int(distanceSetPoint * nimbusMotorController.__distanceToEncoderCounts))
         return self._MRT.encoderSetPoint() * nimbusMotorController.__encoderCountsToDistance
 
     def MRBDSP(self, distanceSetPoint: float = None) -> float:
@@ -309,10 +326,11 @@ class nimbusMotorController:
         :return: current encoder set point in mm
         """
         if distanceSetPoint is not None:
-            self._MRB.encoderSetPoint(encoderSetPoint=int(distanceSetPoint*nimbusMotorController.__distanceToEncoderCounts))
+            self._MRB.encoderSetPoint(
+                encoderSetPoint=int(distanceSetPoint * nimbusMotorController.__distanceToEncoderCounts))
         return self._MRB.encoderSetPoint() * nimbusMotorController.__encoderCountsToDistance
 
-    def MDSPA(self, distanceSetPointList: [float, float, float, float] = None) -> [float, float, float, float]:
+    def MDSPA(self, distanceSetPointList: list[float, float, float, float] = None) -> list[float, float, float, float]:
         """
 
         Sets or gets the Motor Distance set point for all motors at once.
@@ -321,16 +339,20 @@ class nimbusMotorController:
         :return: Distance set points in mm
         """
         if distanceSetPointList is not None:
-            self._MLT.encoderSetPoint(encoderSetPoint=int(distanceSetPointList[0]*nimbusMotorController.__distanceToEncoderCounts))
-            self._MLB.encoderSetPoint(encoderSetPoint=int(distanceSetPointList[1]*nimbusMotorController.__distanceToEncoderCounts))
-            self._MRT.encoderSetPoint(encoderSetPoint=int(distanceSetPointList[2]*nimbusMotorController.__distanceToEncoderCounts))
-            self._MRB.encoderSetPoint(encoderSetPoint=int(distanceSetPointList[3]*nimbusMotorController.__distanceToEncoderCounts))
+            self._MLT.encoderSetPoint(
+                encoderSetPoint=int(distanceSetPointList[0] * nimbusMotorController.__distanceToEncoderCounts))
+            self._MLB.encoderSetPoint(
+                encoderSetPoint=int(distanceSetPointList[1] * nimbusMotorController.__distanceToEncoderCounts))
+            self._MRT.encoderSetPoint(
+                encoderSetPoint=int(distanceSetPointList[2] * nimbusMotorController.__distanceToEncoderCounts))
+            self._MRB.encoderSetPoint(
+                encoderSetPoint=int(distanceSetPointList[3] * nimbusMotorController.__distanceToEncoderCounts))
         return [self._MLT.encoderSetPoint() * nimbusMotorController.__encoderCountsToDistance,
                 self._MLB.encoderSetPoint() * nimbusMotorController.__encoderCountsToDistance,
                 self._MRT.encoderSetPoint() * nimbusMotorController.__encoderCountsToDistance,
                 self._MRB.encoderSetPoint() * nimbusMotorController.__encoderCountsToDistance]
 
-    def MLTMM(self, minMaxList: [int, int] = None) -> [int, int]:
+    def MLTMM(self, minMaxList: list[int, int] = None) -> list[int, int]:
         """
         Set or get the minimum and maximum speed of the Motor Left Top.
         :param minMaxList: motor Speeds [min, max]
@@ -340,7 +362,7 @@ class nimbusMotorController:
             self._MLT.minMax(minMaxList=minMaxList)
         return self._MLT.minMax()
 
-    def MLBMM(self, minMaxList: [int, int] = None) -> [int, int]:
+    def MLBMM(self, minMaxList: list[int, int] = None) -> list[int, int]:
         """
         Set or get the minimum and maximum speed of the Motor Left Bottom.
         :param minMaxList: motor Speeds [min, max]
@@ -350,7 +372,7 @@ class nimbusMotorController:
             self._MLB.minMax(minMaxList=minMaxList)
         return self._MLB.minMax()
 
-    def MRTMM(self, minMaxList: [int, int] = None) -> [int, int]:
+    def MRTMM(self, minMaxList: list[int, int] = None) -> list[int, int]:
         """
         Set or get the minimum and maximum speed of the Motor Right Top.
         :param minMaxList: motor Speeds [min, max]
@@ -370,7 +392,7 @@ class nimbusMotorController:
             self._MRB.minMax(minMaxList=minMaxList)
         return self._MRB.minMax()
 
-    def MMMA(self, minMaxListList: [[int,int], [int, int], [int, int], [int, int]] = None) ->  [[int,int], [int, int], [int, int], [int, int]]:
+    def MMMA(self, minMaxListList: list[list[int, int], list[int, int], list[int, int], list[int, int]] = None) -> list[list[int, int], list[int, int], list[int, int], list[int, int]]:
         """
 
         Set or get the minimum and maximum speed limits of all motors.
@@ -477,7 +499,9 @@ class nimbusMotorController:
             self._MRB.controllerParams(PIDParams=PIDParams)
         return self._MRB.controllerParams()
 
-    def MCPA(self, PIDParamsList: [[float, float, float], [float, float, float], [float, float, float], [float, float, float]] = None ) -> [[float, float, float], [float, float, float], [float, float, float], [float, float, float]]:
+    def MCPA(self, PIDParamsList: list[
+        list[float, float, float], list[float, float, float], list[float, float, float], list[
+            float, float, float]] = None) -> list[list[float, float, float], list[float, float, float], list[float, float, float], list[float, float, float]]:
         """
 
         Sets or Gets the PID Parameters of all motors at once
@@ -494,3 +518,73 @@ class nimbusMotorController:
                 self._MLB.controllerParams(),
                 self._MRT.controllerParams(),
                 self._MRB.controllerParams()]
+
+    def MVA(self,
+            theta: float = None,
+            vel: float = None,
+            phi: float = None,
+            timeOut: int = None):
+        if self._timerBehaviour == 1:
+            self._timer.init(callback=None)
+            # self._MSP.value(0)
+            self._MLT.motorSpeed(speed=0)
+            self._MLB.motorSpeed(speed=0)
+            self._MRT.motorSpeed(speed=0)
+            self._MRB.motorSpeed(speed=0)
+        s = math.sin
+        c = math.cos
+        f = math.fabs
+        pi = math.pi
+        pi_4 = pi / 4
+        if phi is not None and -pi < phi <= pi:
+            turn = phi / pi
+        else:
+            turn = 0
+        if theta is not None and -pi < theta <= pi:
+            sin_comp = s(theta - pi_4)
+            cos_comp = c(theta - pi_4)
+            max_comp = max(f(sin_comp), f(cos_comp))
+        else:
+            sin_comp = 0
+            cos_comp = 0
+            max_comp = 1
+        lt = cos_comp / max_comp - turn
+        rt = sin_comp / max_comp + turn
+        lb = sin_comp / max_comp - turn
+        rb = cos_comp / max_comp + turn
+        if phi != 0 and theta is not None and -pi >= theta > pi:
+            lt /= (1 + turn)
+            lb /= (1 + turn)
+            rt /= (1 + turn)
+            rb /= (1 + turn)
+        ltS = int(lt * vel)
+        rtS = int(rt * vel)
+        lbS = int(lb * vel)
+        rbS = int(rb * vel)
+        if timeOut is None or timeOut <= 0:
+            timeOutValue = self._timeOut
+        else:
+            timeOutValue = max(timeOut, nimbusMotorController.__minimumTimeout)
+        self._MLT.motorSpeed(speed=ltS)
+        self._MLB.motorSpeed(speed=lbS)
+        self._MRT.motorSpeed(speed=rtS)
+        self._MRB.motorSpeed(speed=rbS)
+        # self._MSP.value(1)
+        if self._timerBehaviour == 1:
+            self._timer.init(mode=Timer.ONE_SHOT, period=timeOutValue, callback=self._selfCallBack)
+
+    def MTA(self,
+            timeOut: int = None):
+        if timeOut is None:
+            return self._timeOut
+
+        if timeOut <= 0:
+            self._timeOut = nimbusMotorController.__defaultTimeout
+        else:
+            self._timeOut = max(timeOut, nimbusMotorController.__minimumTimeout)
+        return self._timeOut
+
+    def MTB(self, timeOutBehaviour: int) -> int:
+        if timeOutBehaviour is not None:
+            self._timerBehaviour = timeOutBehaviour
+        return self._timerBehaviour

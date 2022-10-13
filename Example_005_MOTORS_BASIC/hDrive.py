@@ -77,11 +77,11 @@ def btnIRQ(pin):
 
 btn.irq(trigger=Pin.IRQ_FALLING, handler=btnIRQ)
 
-
-theta = 0
-while True:
-    mc.MVA(theta=theta, vel=65535/2)
-    theta += math.pi/60
-    time.sleep(0.08)
-    if theta > math.pi *2:
-        break
+U#
+# theta = 0
+# while True:
+#     mc.MVA(theta=theta, vel=65535/2)
+#     theta += math.pi/60
+#     time.sleep(0.08)
+#     if theta > math.pi *2:
+#         break

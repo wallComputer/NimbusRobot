@@ -312,7 +312,7 @@ class dcMotor:
                              callback=self._selfCallback)
         return self._PIDDistanceController.setPoint()
 
-    def minMax(self, minMaxList: [int, int] = None) -> [int, int]:
+    def minMax(self, minMaxList: list[int, int] = None) -> list[int, int]:
         """
 
         Sets or gets the minimum and maximum speed of the motor. The values must be between [-65535,65535]
@@ -338,7 +338,7 @@ class dcMotor:
         self._PIDDistanceController.resetController()
         self._encoder.resetEncoder()
 
-    def controllerParams(self, PIDParams: [float, float, float] = None) -> [float, float, float]:
+    def controllerParams(self, PIDParams: list[float, float, float] = None) -> list[float, float, float]:
         """
 
         Sets or Gets the controller [Kp, Ki, Kd] values.

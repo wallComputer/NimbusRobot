@@ -44,13 +44,20 @@ class _Registers:
     NBTN = 0x03
     NNPXL = 0x04
     NBLV = 0x07
-    NPBV = 0x09
-    NBCV = 0x0B
-    NMLTC = 0x0D
-    NMLBC = 0x0F
-    NMRTC = 0x11
-    NMRBC = 0x13
-    DC = 21
+    NPBV = 0x0B
+    NBCV = 0x0F
+    NMLTC = 0x13
+    NMLBC = 0x17
+    NMRTC = 0x1B
+    NMRBC = 0x1F
+    NMLTS = 0x23
+    NMLBS = 0x27
+    NMRTS = 0x2B
+    NMRBS = 0x2F
+    NMTVPT = 0x33
+    NMT = 0x3F
+    NMTB = 0x43
+    DC = 68
 
 
 class nimbusI2CPeripheral:
@@ -59,28 +66,31 @@ class nimbusI2CPeripheral:
     def __init__(self, callBackFunction, initialBatteryCutoff, initialRobotTwistTime=1500,
                  frequency=50, i2cAddress=0x55):
         self.regs = _Registers()
-        self.singeByteRegisters = [self.regs.NLED, self.regs.NMSP, self.regs.NBTN]  # RW 1 Byte
-        self.doubleByteRegisters = [self.regs.NBLV, self.regs.NBCV,
-                                    self.regs.NPBV, self.regs.NMLTC,
-                                    self.regs.NMLBC, self.regs.NMRTC,
-                                    self.regs.NMRBC]  # RW 2 Bytes
+        self.singeByteRegisters = [self.regs.NLED, self.regs.NMSP, self.regs.NBTN, self.regs.NMTB]  # RW 1 Byte
         self.tripleByteRegisters = [self.regs.NNPXL]  # RW 3 Bytes
+        self.floatRegisters = [self.regs.NBLV, self.regs.NBCV, self.regs.NPBV,
+                               self.regs.NMLTC, self.regs.NMLBC, self.regs.NMRTC, self.regs.NMRBC,
+                               self.regs.NMLTS, self.regs.NMLBS, self.regs.NMRTS, self.regs.NMRBS,
+                               self.regs.NMT]  # RW 4 bytes
+        self.sedecimByteRegisters = [self.regs.NMTVPT]
 
         self.dataFieldTx = bytearray([0] * self.regs.DC)
         self.dataFieldRx = bytearray([0] * self.regs.DC)
-        self.dataFieldTx[self.regs.NBCV:self.regs.NBCV + 2] = bytearray(continuousToList2Converter(initialBatteryCutoff, 100))
+        self.dataFieldTx[self.regs.NBCV: self.regs.NBCV+4] = struct.pack('f', initialBatteryCutoff)
         self.p_i2c = i2cPeripheral.i2cPeripheral(i2cID=0, sda=I2C_SDA, scl=I2C_SCL, peripheralAddress=i2cAddress)
         self.tim = Timer()
-        self.tim.init(freq=frequency, mode=Timer.PERIODIC, callback=callBackFunction)
+        self.tim.init(period=int(1000/frequency), mode=Timer.PERIODIC, callback=callBackFunction)
 
     def writeToController(self, register):
         count = 0
         if register in self.singeByteRegisters:
             count = 1
-        elif register in self.doubleByteRegisters:
-            count = 2
         elif register in self.tripleByteRegisters:
             count = 3
+        elif register in self.floatRegisters:
+            count = 4
+        elif register in self.sedecimByteRegisters:
+            count = 12
         print("WT: {0}, C: {1}".format(hex(register), count))
         for i in range(0, count):
             self.p_i2c.put(self.dataFieldTx[register + i])
@@ -89,11 +99,12 @@ class nimbusI2CPeripheral:
         count = 0
         if register in self.singeByteRegisters:
             count = 1
-        elif register in self.doubleByteRegisters:
-            count = 2
         elif register in self.tripleByteRegisters:
             count = 3
-
+        elif register in self.floatRegisters:
+            count = 4
+        elif register in self.sedecimByteRegisters:
+            count = 12
         print("RF: {0}, C: {1}".format(hex(register), count))
         if count is 1:
             self.dataFieldRx[register] = self.p_i2c.get()
@@ -103,3 +114,6 @@ class nimbusI2CPeripheral:
                 self.dataFieldRx[register + i] = self.p_i2c.get()
         for i in range(0, count):
             self.dataFieldTx[register + i] = self.dataFieldRx[register + i]
+
+    def fillTxFloat(self, register, value):
+        self.dataFieldTx[register:register + 4] = struct.pack('f', value)

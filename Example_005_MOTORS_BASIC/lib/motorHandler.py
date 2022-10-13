@@ -540,7 +540,7 @@ class nimbusMotorController:
             turn = phi / pi
         else:
             turn = 0
-        if theta is not None and 0 <= theta < 2 * pi:
+        if theta is not None and -pi < theta <= pi:
             sin_comp = s(theta - pi_4)
             cos_comp = c(theta - pi_4)
             max_comp = max(f(sin_comp), f(cos_comp))
